@@ -63,14 +63,14 @@ jobs:
           echo "Processing dataset: ${{ matrix.dataset }}"
           uv run python -c "from moabb.datasets import ${{ matrix.dataset }}; ds=${{ matrix.dataset }}(); ds.get_data(subjects=ds.subject_list[${{ matrix.subject.start }}:${{ matrix.subject.end }}])"
 
-      - name: Compress mne data
-        run: tar czvf mne_data.tar.gz ~/mne_data
+      # - name: Compress mne data
+      #   run: tar czvf mne_data.tar.gz ~/mne_data
 
       - name: Upload Artifacts 
         uses: actions/upload-artifact@v4
         with:
           name: results-${{ matrix.dataset }}-${{ matrix.subject.start }}-${{ matrix.subject.end }}
-          path: mne_data.tar.gz # 假设输出在此目录
+          path: ~/mne_data # 假设输出在此目录
   # 2. 最终发布阶段
   release:
     name: Build and Push Release
