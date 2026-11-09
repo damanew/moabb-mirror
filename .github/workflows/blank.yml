@@ -34,15 +34,19 @@ jobs:
           # "TrianaGuzman2024",
           # "BNCI2014_001"
         ]
-        subject: [
-          "0:4",
-          "4:8",
-          "8:12",
-          "12:16",
-          "16:20",
-          "20:24",
-        ]
-    
+        subject: 
+          - start: 0
+            end: 4
+          - start: 4
+            end: 8
+          - start: 8
+            end: 12        
+          - start: 12
+            end: 16
+          - start: 16
+            end: 20
+          - start: 20
+            end: 24 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -57,7 +61,7 @@ jobs:
       - name: Run Processing
         run: |
           echo "Processing dataset: ${{ matrix.dataset }}"
-          uv run python -c "from moabb.datasets import ${{ matrix.dataset }}; ds=${{ matrix.dataset }}(); ds.get_data(subjects=ds.subject_list[${{ matrix.subject }}])"
+          uv run python -c "from moabb.datasets import ${{ matrix.dataset }}; ds=${{ matrix.dataset }}(); ds.get_data(subjects=ds.subject_list[${{ matrix.subject.start }}:${{ matrix.subject.end }}])"
 
       - name: Compress mne data
         run: tar czvf mne_data.tar.gz ~/mne_data
@@ -65,7 +69,7 @@ jobs:
       - name: Upload Artifacts 
         uses: actions/upload-artifact@v4
         with:
-          name: results-${{ matrix.dataset }}-${{ matrix.subject }}
+          name: results-${{ matrix.dataset }}-${{ matrix.subject.start }}-${{ matrix.subject.end }}
           path: mne_data.tar.gz # 假设输出在此目录
   # 2. 最终发布阶段
   release:
