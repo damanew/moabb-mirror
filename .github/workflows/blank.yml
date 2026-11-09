@@ -21,8 +21,9 @@ jobs:
   process-data:
     name: Process ${{ matrix.dataset }}
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     strategy:
-      max-parallel: 4
+      max-parallel: 16
       matrix:
         dataset: [
           "BNCI2025_001",
