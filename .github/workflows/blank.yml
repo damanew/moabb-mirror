@@ -42,6 +42,7 @@ jobs:
       - name: Setup Environment
         run: |
           echo "Setting up environment for ${{ matrix.dataset }}"
+          uv init
           uv add moabb tqdm
 
       - name: Run Processing
