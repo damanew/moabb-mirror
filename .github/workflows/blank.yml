@@ -26,13 +26,21 @@ jobs:
       max-parallel: 16
       matrix:
         dataset: [
-          # "BNCI2025_001",
-          "Yi2025",
-          "Weibo2014",
-          "Ofner2017",
-          "PhysionetMI",
-          "TrianaGuzman2024",
-          "BNCI2014_001"
+          "BNCI2025_001"
+          # "Yi2025",
+          # "Weibo2014",
+          # "Ofner2017",
+          # "PhysionetMI",
+          # "TrianaGuzman2024",
+          # "BNCI2014_001"
+        ]
+        subject: [
+          "0:4",
+          "4:8",
+          "8:12",
+          "12:16",
+          "16:20",
+          "20:24",
         ]
     
     steps:
@@ -49,7 +57,7 @@ jobs:
       - name: Run Processing
         run: |
           echo "Processing dataset: ${{ matrix.dataset }}"
-          uv run python -c "from moabb.datasets import ${{ matrix.dataset }}; ${{ matrix.dataset }}().get_data()"
+          uv run python -c "from moabb.datasets import ${{ matrix.dataset }}; ds=${{ matrix.dataset }}(); ds.get_data(subjects=ds.subject_list[${{ matrix.subject }}])"
 
       - name: Compress mne data
         run: tar czvf mne_data.tar.gz ~/mne_data
