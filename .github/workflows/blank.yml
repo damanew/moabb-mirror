@@ -1,0 +1,97 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Mirror
+
+# BNCI2025_001
+# Yi2025
+# Weibo2014
+# Ofner2017
+# PhysionetMI
+# TrianaGuzman2024
+# BNCI2014_001
+
+
+# Controls when the workflow will run
+on:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  # 1. 并行数据处理阶段
+  process-data:
+    name: Process ${{ matrix.dataset }}
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 4
+      matrix:
+        dataset: [
+          "BNCI2025_001",
+          "Yi2025",
+          "Weibo2014",
+          "Ofner2017",
+          "PhysionetMI",
+          "TrianaGuzman2024",
+          "BNCI2014_001"
+        ]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: astral-sh/setup-uv
+        uses: astral-sh/setup-uv@v10.3.3
+      - name: Setup Environment
+        run: |
+          echo "Setting up environment for ${{ matrix.dataset }}"
+          uv add moabb tqdm
+
+      - name: Run Processing
+        run: |
+          echo "Processing dataset: ${{ matrix.dataset }}"
+          uv run python -c "from moabb.datasets import ${{ matrix.dataset }}; ${{ matrix.dataset }}().get_data()"
+
+      - name: Compress mne data
+        run: tar czvf mne_data.tar.gz ~/mne_data
+
+      - name: Upload Artifacts 
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-${{ matrix.dataset }}
+          path: mne_data.tar.gz # 假设输出在此目录
+  # 2. 最终发布阶段
+  release:
+    name: Build and Push Release
+    needs: [process-data] # 关键：等待所有 process-data 任务完成
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./all-results
+
+      - name: Aggregate Results
+        run: |
+          echo "Aggregating results from all datasets..."
+          ls -R ./all-results
+          # 在这里合并结果或生成最终报告
+
+      - name: Generate Version Tag
+        id: tag
+        run: |
+          # 简单示例：生成一个基于时间的标签，实际项目中建议使用语义化版本工具
+          echo "tag=v1.0.0-$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: Release ${{ steps.tag.outputs.tag }}
+          body: |
+            Automated release after processing all datasets.
+            Datasets included: BNCI2025_001, Yi2025, etc.
+          files: |
+            ./all-results/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
