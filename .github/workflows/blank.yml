@@ -74,38 +74,34 @@ jobs:
   # 2. 最终发布阶段
   release:
     name: Build and Push Release
-    needs: [process-data] # 关键：等待所有 process-data 任务完成
+    needs: [process-data]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # 必须保留，否则 gh release create 会失败
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
+  
       - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
           path: ./all-results
-
+  
       - name: Aggregate Results
         run: |
           echo "Aggregating results from all datasets..."
           ls -R ./all-results
-          # 在这里合并结果或生成最终报告
-
+  
       - name: Generate Version Tag
         id: tag
-        run: |
-          # 简单示例：生成一个基于时间的标签，实际项目中建议使用语义化版本工具
-          echo "tag=v1.0.0-$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: Release ${{ steps.tag.outputs.tag }}
-          body: |
-            Automated release after processing all datasets.
-            Datasets included: BNCI2025_001, Yi2025, etc.
-          files: |
-            ./all-results/**/*
+        run: echo "tag=v1.0.0-$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+  
+      - name: Create GitHub Release (via GitHub CLI)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}          
+          GH_TOKEN: ${{ github.token }}   # gh 命令使用 GH_TOKEN 进行认证
+        run: |
+          gh release create "${{ steps.tag.outputs.tag }}" \
+            --title "Release ${{ steps.tag.outputs.tag }}" \
+            --notes "Automated release after processing all datasets.
+          Datasets included: BNCI2025_001" \
+            ./all-results/**/*      
