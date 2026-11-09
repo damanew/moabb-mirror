@@ -26,7 +26,7 @@ jobs:
       max-parallel: 16
       matrix:
         dataset: [
-          "BNCI2025_001",
+          # "BNCI2025_001",
           "Yi2025",
           "Weibo2014",
           "Ofner2017",
