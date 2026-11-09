@@ -65,7 +65,7 @@ jobs:
       - name: Upload Artifacts 
         uses: actions/upload-artifact@v4
         with:
-          name: results-${{ matrix.dataset }}
+          name: results-${{ matrix.dataset }}-${{ matrix.subject }}
           path: mne_data.tar.gz # 假设输出在此目录
   # 2. 最终发布阶段
   release:
