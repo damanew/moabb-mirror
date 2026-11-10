@@ -103,7 +103,7 @@ jobs:
       - name: Aggregate Results And Compress
         run: |
           echo "Aggregating results from all datasets and compress..."
-          run: tar czvf ${{ matrix.dataset }}.tar.gz ./all-results
+          tar czvf ${{ matrix.dataset }}.tar.gz ./all-results
   
       - name: Generate Version Tag
         id: tag
