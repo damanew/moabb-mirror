@@ -19,7 +19,7 @@ on:
 jobs:
   # 1. 并行数据处理阶段
   process-data:
-    name: Process ${{ matrix.dataset }}
+    name: Process ${{ matrix.dataset }} ${{ matrix.subject.start }}-${{ matrix.subject.end }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -76,6 +76,17 @@ jobs:
     name: Build and Push Release
     needs: [process-data]
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dataset: [
+          "BNCI2025_001"
+          # "Yi2025",
+          # "Weibo2014",
+          # "Ofner2017",
+          # "PhysionetMI",
+          # "TrianaGuzman2024",
+          # "BNCI2014_001"
+        ]
     permissions:
       contents: write   # 必须保留，否则 gh release create 会失败
     steps:
@@ -85,12 +96,14 @@ jobs:
       - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: results-${{ matrix.dataset }}-*
+          merge-multiple: true
           path: ./all-results
   
-      - name: Aggregate Results
+      - name: Aggregate Results And Compress
         run: |
-          echo "Aggregating results from all datasets..."
-          ls -R ./all-results
+          echo "Aggregating results from all datasets and compress..."
+          run: tar czvf ${{ matrix.dataset }}.tar.gz ./all-results
   
       - name: Generate Version Tag
         id: tag
@@ -104,4 +117,4 @@ jobs:
             --title "Release ${{ steps.tag.outputs.tag }}" \
             --notes "Automated release after processing all datasets.
           Datasets included: BNCI2025_001" \
-            ./all-results/**/*      
+            ./${{ matrix.dataset }}.tar.gz     
