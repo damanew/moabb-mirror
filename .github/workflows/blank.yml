@@ -98,12 +98,12 @@ jobs:
         with:
           pattern: results-${{ matrix.dataset }}-*
           merge-multiple: true
-          path: ./all-results
+          path: ./mne_data
   
       - name: Aggregate Results And Compress
         run: |
           echo "Aggregating results from all datasets and compress..."
-          tar czvf ${{ matrix.dataset }}.tar.gz ./all-results
+          tar czvf ${{ matrix.dataset }}.tar.gz ./mne_data
   
       - name: Generate Version Tag
         id: tag
