@@ -47,6 +47,8 @@ jobs:
             end: 20
           - start: 20
             end: 24 
+    permissions: 
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -62,54 +64,12 @@ jobs:
         run: |
           echo "Processing dataset: ${{ matrix.dataset }}"
           uv run python -c "from moabb.datasets import ${{ matrix.dataset }}; ds=${{ matrix.dataset }}(); ds.get_data(subjects=ds.subject_list[${{ matrix.subject.start }}:${{ matrix.subject.end }}])"
-
-      # - name: Compress mne data
-      #   run: tar czvf mne_data.tar.gz ~/mne_data
-
-      - name: Upload Artifacts 
-        uses: actions/upload-artifact@v4
-        with:
-          name: results-${{ matrix.dataset }}-${{ matrix.subject.start }}-${{ matrix.subject.end }}
-          path: ~/mne_data # 假设输出在此目录
-  # 2. 最终发布阶段
-  release:
-    name: Build and Push Release
-    needs: [process-data]
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        dataset: [
-          "BNCI2025_001"
-          # "Yi2025",
-          # "Weibo2014",
-          # "Ofner2017",
-          # "PhysionetMI",
-          # "TrianaGuzman2024",
-          # "BNCI2014_001"
-        ]
-    permissions:
-      contents: write   # 必须保留，否则 gh release create 会失败
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-  
-      - name: Download All Artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: results-${{ matrix.dataset }}-*
-          merge-multiple: true
-          path: ./mne_data
-  
-      - name: Aggregate Results And Compress
-        run: |
-          echo "Aggregating results from all datasets and compress..."
-          tar czvf ${{ matrix.dataset }}.tar.gz ./mne_data
-          split -b 2G -d -a 3 ${{ matrix.dataset }}.tar.gz ${{ matrix.dataset }}.tar.gz.
-  
+          tar czvf - ~/mne_data | split -b 2G -d -a 3 ${{ matrix.dataset }}-{{ matrix.subject.start }}-${{ matrix.subject.end }}.tar.gz.
+          
+          
       - name: Generate Version Tag
         id: tag
-        run: echo "tag=v1.0.0-$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
-  
+        run: echo "tag=v1.0.0-${{ matrix.dataset }}-${{ matrix.subject.start }}-${{ matrix.subject.end }}" >> $GITHUB_OUTPUT
       - name: Create GitHub Release (via GitHub CLI)
         env:
           GH_TOKEN: ${{ github.token }}   # gh 命令使用 GH_TOKEN 进行认证
@@ -117,5 +77,59 @@ jobs:
           gh release create "${{ steps.tag.outputs.tag }}" \
             --title "Release ${{ steps.tag.outputs.tag }}" \
             --notes "Automated release after processing all datasets.
-          Datasets included: BNCI2025_001" \
-            ./${{ matrix.dataset }}.tar.gz.*     
+          Datasets included: ${{ matrix.dataset }}-${{ matrix.subject.start }}-${{ matrix.subject.end }}" \
+          ./*.tar.gz.*
+                
+      # - name: Upload Artifacts 
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: results-${{ matrix.dataset }}-${{ matrix.subject.start }}-${{ matrix.subject.end }}
+      #     path: ~/mne_data # 假设输出在此目录
+  # 2. 最终发布阶段
+  # release:
+  #   name: Build and Push Release
+  #   needs: [process-data]
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       dataset: [
+  #         "BNCI2025_001"
+  #         # "Yi2025",
+  #         # "Weibo2014",
+  #         # "Ofner2017",
+  #         # "PhysionetMI",
+  #         # "TrianaGuzman2024",
+  #         # "BNCI2014_001"
+  #       ]
+  #   permissions:
+  #     contents: write   # 必须保留，否则 gh release create 会失败
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  
+  #     - name: Download All Artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         pattern: results-${{ matrix.dataset }}-*
+  #         merge-multiple: true
+  #         path: ./mne_data
+  
+  #     - name: Aggregate Results And Compress
+  #       run: |
+  #         echo "Aggregating results from all datasets and compress..."
+  #         tar czvf ${{ matrix.dataset }}.tar.gz ./mne_data
+  #         split -b 2G -d -a 3 ${{ matrix.dataset }}.tar.gz ${{ matrix.dataset }}.tar.gz.
+  
+  #     - name: Generate Version Tag
+  #       id: tag
+  #       run: echo "tag=v1.0.0-$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
+  
+  #     - name: Create GitHub Release (via GitHub CLI)
+  #       env:
+  #         GH_TOKEN: ${{ github.token }}   # gh 命令使用 GH_TOKEN 进行认证
+  #       run: |
+  #         gh release create "${{ steps.tag.outputs.tag }}" \
+  #           --title "Release ${{ steps.tag.outputs.tag }}" \
+  #           --notes "Automated release after processing all datasets.
+  #         Datasets included: BNCI2025_001" \
+  #           ./${{ matrix.dataset }}.tar.gz.*     
