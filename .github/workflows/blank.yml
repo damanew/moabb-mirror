@@ -22,17 +22,19 @@ jobs:
           # - "BNCI2014_001"
         subject:
           - start: 0
-            end: 4
-          - start: 4
-            end: 8
-          - start: 8
+            end: 3
+          - start: 3
+            end: 6
+          - start: 6
+            end: 9
+          - start: 9
             end: 12
           - start: 12
-            end: 16
-          - start: 16
-            end: 20
-          - start: 20
-            end: 24
+            end: 15
+          - start: 15
+            end: 18
+          - start: 18
+            end: 21
 
     permissions:
       contents: write
