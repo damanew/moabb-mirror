@@ -14,12 +14,12 @@ jobs:
       matrix:
         dataset:
           - "BNCI2025_001"
-          # - "Yi2025"
+          - "Yi2025"
           # - "Weibo2014"
-          # - "Ofner2017"
+          - "Ofner2017"
           # - "PhysionetMI"
           # - "TrianaGuzman2024"
-          # - "BNCI2014_001"
+          - "BNCI2019_001"
         subject:
           - start: 0
             end: 3
@@ -74,7 +74,7 @@ jobs:
       - name: Generate Version Tag
         id: tag
         run: |
-          TAG="v1.0.0-${{ matrix.dataset }}"
+          TAG="v1.0.1-${{ matrix.dataset }}"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
