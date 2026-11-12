@@ -104,6 +104,7 @@ jobs:
         run: |
           echo "Aggregating results from all datasets and compress..."
           tar czvf ${{ matrix.dataset }}.tar.gz ./mne_data
+          split -b 2G -d -a 3 ${{ matrix.dataset }}.tar.gz ${{ matrix.dataset }}.tar.gz.
   
       - name: Generate Version Tag
         id: tag
@@ -117,4 +118,4 @@ jobs:
             --title "Release ${{ steps.tag.outputs.tag }}" \
             --notes "Automated release after processing all datasets.
           Datasets included: BNCI2025_001" \
-            ./${{ matrix.dataset }}.tar.gz     
+            ./${{ matrix.dataset }}.tar.gz.*     
