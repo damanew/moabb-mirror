@@ -63,7 +63,7 @@ jobs:
           # 使用 tar 压缩，然后通过 split 分割成 2GB 大小的块
           ARCHIVE_PREFIX="${{ matrix.dataset }}-sub${{ matrix.subject.start }}-${{ matrix.subject.end }}"
           
-          tar cvf - ~/mne_data | split -b 2G -d -a 3 - "${ARCHIVE_PREFIX}.tar."
+          tar cvf - ~/mne_data | split -b 1.99G -d -a 3 - "${ARCHIVE_PREFIX}.tar."
           
           # 列出生成的文件以便调试
           ls -lh ${ARCHIVE_PREFIX}*
