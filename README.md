@@ -20,7 +20,7 @@ mkdir -p "$DEST"
 # Group split archives by base name (a, b, ...)
 for base in $(ls "$SRC"/*.tar.* | sed -E 's/.*\/([^/]+)\.tar\.[0-9]+$/\1/' | sort -u); do
     echo "Extracting $base.tar.* ..."
-    cat "$SRC/$base".tar.* | tar -xvvf - -C "$DEST" --checkpoint=1000 --checkpoint-action=dot "home/runner/mne_data"
+    cat "$SRC/$base".tar.* | tar -xvvf - -C "$DEST" --strip-components=3 --checkpoint=1000 --checkpoint-action=dot "home/runner/mne_data"
 done
 
 echo "Done. Extracted into $DEST"
