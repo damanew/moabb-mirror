@@ -72,7 +72,7 @@ jobs:
       - name: Generate Version Tag
         id: tag
         run: |
-          TAG="v1.0.0-${{ matrix.dataset }}-${{ matrix.subject.start }}-${{ matrix.subject.end }}"
+          TAG="v1.0.0-${{ matrix.dataset }}"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
@@ -91,7 +91,12 @@ jobs:
           fi
 
           # 创建 Release (如果已存在则追加文件，或者使用 --clobber 覆盖，这里假设每次都是新Tag)
+          # 1. 创建 Release (如果已存在则报错，使用 || true 忽略错误以允许重跑)
           gh release create "$TAG" \
-            --title "Release $TAG" \
-            --notes "Automated release for ${{ matrix.dataset }} subjects ${{ matrix.subject.start }}-${{ matrix.subject.end }}" \
-            $FILES
+              --title "Release $TAG" \
+              --notes "Automated release for ${{ matrix.dataset }}" \
+              || true
+          
+          # 2. 上传文件并覆盖已存在的同名资产
+          gh release upload "$TAG" $FILES --clobber
+
