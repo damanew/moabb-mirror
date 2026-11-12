@@ -1,135 +1,135 @@
-# This is a basic workflow to help you get started with Actions
-
-name: Mirror
-
-# BNCI2025_001
-# Yi2025
-# Weibo2014
-# Ofner2017
-# PhysionetMI
-# TrianaGuzman2024
-# BNCI2014_001
-
+name: Mirror BCI Data
 
 # Controls when the workflow will run
 on:
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
-  # 1. 并行数据处理阶段
   process-data:
-    name: Process ${{ matrix.dataset }} ${{ matrix.subject.start }}-${{ matrix.subject.end }}
+    name: Process ${{ matrix.dataset }} (Subjs ${{ matrix.subject.start }}-${{ matrix.subject.end }})
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120 # 增加超时时间，防止大数据集下载超时
     strategy:
       max-parallel: 16
       matrix:
-        dataset: [
-          "BNCI2025_001"
-          # "Yi2025",
-          # "Weibo2014",
-          # "Ofner2017",
-          # "PhysionetMI",
-          # "TrianaGuzman2024",
-          # "BNCI2014_001"
-        ]
-        subject: 
+        dataset:
+          - "BNCI2025_001"
+          # - "Yi2025"
+          # - "Weibo2014"
+          # - "Ofner2017"
+          # - "PhysionetMI"
+          # - "TrianaGuzman2024"
+          # - "BNCI2014_001"
+        subject:
           - start: 0
             end: 4
           - start: 4
             end: 8
           - start: 8
-            end: 12        
+            end: 12
           - start: 12
             end: 16
           - start: 16
             end: 20
           - start: 20
-            end: 24 
-    permissions: 
+            end: 24
+
+    permissions:
       contents: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: astral-sh/setup-uv
-        uses: astral-sh/setup-uv@v10.3.3
+
+      - name: Install UV
+        uses: astral-sh/setup-uv@v1
+        with:
+          enable-cache: true
+
       - name: Setup Environment
         run: |
-          echo "Setting up environment for ${{ matrix.dataset }}"
-          uv init
+          uv init --no-readme
           uv add moabb tqdm
 
-      - name: Run Processing
+      - name: Run Processing & Package Data
+        id: process
         run: |
           echo "Processing dataset: ${{ matrix.dataset }}"
-          uv run python -c "from moabb.datasets import ${{ matrix.dataset }}; ds=${{ matrix.dataset }}(); ds.get_data(subjects=ds.subject_list[${{ matrix.subject.start }}:${{ matrix.subject.end }}])"
-          tar czvf - ~/mne_data | split -b 2G -d -a 3 ${{ matrix.dataset }}-{{ matrix.subject.start }}-${{ matrix.subject.end }}.tar.gz.
           
+          # 1. 创建临时目录用于存储当前任务的数据
+          DATA_DIR="./mne_data_${{ matrix.dataset }}_${{ matrix.subject.start }}_${{ matrix.subject.end }}"
+          mkdir -p "$DATA_DIR"
+
+          # 2. 运行 Python 脚本下载并处理数据
+          # 注意：MOABB 数据集类名通常与数据集键名一致，但需动态导入
+          uv run python << EOF
+          import importlib
+          from moabb.datasets import utils
           
+          dataset_name = "${{ matrix.dataset }}"
+          start_idx = ${{ matrix.subject.start }}
+          end_idx = ${{ matrix.subject.end }}
+          
+          try:
+              # 动态获取数据集类
+              ds_class = getattr(importlib.import_module('moabb.datasets'), dataset_name)
+              ds = ds_class()
+              
+              # 获取所有受试者列表
+              all_subjects = ds.subject_list
+              
+              # 切片获取当前任务的受试者
+              target_subjects = all_subjects[start_idx:end_idx]
+              
+              if not target_subjects:
+                  print(f"No subjects found for range {start_idx}-{end_idx}")
+                  exit(1)
+                  
+              print(f"Downloading data for subjects: {target_subjects}")
+              
+              # 下载数据到指定目录 (MOABB 支持 path 参数)
+              ds.get_data(subjects=target_subjects, path="$DATA_DIR")
+              
+          except Exception as e:
+              print(f"Error processing {dataset_name}: {e}")
+              exit(1)
+          EOF
+
+          # 3. 打包并分割文件
+          # 使用 tar 压缩，然后通过 split 分割成 2GB 大小的块
+          ARCHIVE_PREFIX="${{ matrix.dataset }}-sub${{ matrix.subject.start }}-${{ matrix.subject.end }}"
+          
+          tar czf - -C "$DATA_DIR" . | split -b 2G -d -a 3 - "${ARCHIVE_PREFIX}.tar.gz."
+          
+          # 列出生成的文件以便调试
+          ls -lh ${ARCHIVE_PREFIX}*
+          
+          # 输出归档前缀供下一步使用
+          echo "archive_prefix=${ARCHIVE_PREFIX}" >> $GITHUB_OUTPUT
+
       - name: Generate Version Tag
         id: tag
-        run: echo "tag=v1.0.0-${{ matrix.dataset }}-${{ matrix.subject.start }}-${{ matrix.subject.end }}" >> $GITHUB_OUTPUT
-      - name: Create GitHub Release (via GitHub CLI)
-        env:
-          GH_TOKEN: ${{ github.token }}   # gh 命令使用 GH_TOKEN 进行认证
         run: |
-          gh release create "${{ steps.tag.outputs.tag }}" \
-            --title "Release ${{ steps.tag.outputs.tag }}" \
-            --notes "Automated release after processing all datasets.
-          Datasets included: ${{ matrix.dataset }}-${{ matrix.subject.start }}-${{ matrix.subject.end }}" \
-          ./*.tar.gz.*
-                
-      # - name: Upload Artifacts 
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: results-${{ matrix.dataset }}-${{ matrix.subject.start }}-${{ matrix.subject.end }}
-      #     path: ~/mne_data # 假设输出在此目录
-  # 2. 最终发布阶段
-  # release:
-  #   name: Build and Push Release
-  #   needs: [process-data]
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     matrix:
-  #       dataset: [
-  #         "BNCI2025_001"
-  #         # "Yi2025",
-  #         # "Weibo2014",
-  #         # "Ofner2017",
-  #         # "PhysionetMI",
-  #         # "TrianaGuzman2024",
-  #         # "BNCI2014_001"
-  #       ]
-  #   permissions:
-  #     contents: write   # 必须保留，否则 gh release create 会失败
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  
-  #     - name: Download All Artifacts
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         pattern: results-${{ matrix.dataset }}-*
-  #         merge-multiple: true
-  #         path: ./mne_data
-  
-  #     - name: Aggregate Results And Compress
-  #       run: |
-  #         echo "Aggregating results from all datasets and compress..."
-  #         tar czvf ${{ matrix.dataset }}.tar.gz ./mne_data
-  #         split -b 2G -d -a 3 ${{ matrix.dataset }}.tar.gz ${{ matrix.dataset }}.tar.gz.
-  
-  #     - name: Generate Version Tag
-  #       id: tag
-  #       run: echo "tag=v1.0.0-$(date +%Y%m%d%H%M%S)" >> $GITHUB_OUTPUT
-  
-  #     - name: Create GitHub Release (via GitHub CLI)
-  #       env:
-  #         GH_TOKEN: ${{ github.token }}   # gh 命令使用 GH_TOKEN 进行认证
-  #       run: |
-  #         gh release create "${{ steps.tag.outputs.tag }}" \
-  #           --title "Release ${{ steps.tag.outputs.tag }}" \
-  #           --notes "Automated release after processing all datasets.
-  #         Datasets included: BNCI2025_001" \
-  #           ./${{ matrix.dataset }}.tar.gz.*     
+          TAG="v1.0.0-${{ matrix.dataset }}-${{ matrix.subject.start }}-${{ matrix.subject.end }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PREFIX="${{ steps.process.outputs.archive_prefix }}"
+          TAG="${{ steps.tag.outputs.tag }}"
+          
+          # 收集所有分割后的文件
+          FILES=$(ls ${PREFIX}.tar.gz.*)
+          
+          if [ -z "$FILES" ]; then
+            echo "No archive files found to upload!"
+            exit 1
+          fi
+
+          # 创建 Release (如果已存在则追加文件，或者使用 --clobber 覆盖，这里假设每次都是新Tag)
+          gh release create "$TAG" \
+            --title "Release $TAG" \
+            --notes "Automated release for ${{ matrix.dataset }} subjects ${{ matrix.subject.start }}-${{ matrix.subject.end }}" \
+            $FILES
