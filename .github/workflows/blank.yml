@@ -55,45 +55,7 @@ jobs:
         id: process
         run: |
           echo "Processing dataset: ${{ matrix.dataset }}"
-          
-          # 1. 创建临时目录用于存储当前任务的数据
-          DATA_DIR="./mne_data_${{ matrix.dataset }}_${{ matrix.subject.start }}_${{ matrix.subject.end }}"
-          mkdir -p "$DATA_DIR"
-
-          # 2. 运行 Python 脚本下载并处理数据
-          # 注意：MOABB 数据集类名通常与数据集键名一致，但需动态导入
-          uv run python << EOF
-          import importlib
-          from moabb.datasets import utils
-          
-          dataset_name = "${{ matrix.dataset }}"
-          start_idx = ${{ matrix.subject.start }}
-          end_idx = ${{ matrix.subject.end }}
-          
-          try:
-              # 动态获取数据集类
-              ds_class = getattr(importlib.import_module('moabb.datasets'), dataset_name)
-              ds = ds_class()
-              
-              # 获取所有受试者列表
-              all_subjects = ds.subject_list
-              
-              # 切片获取当前任务的受试者
-              target_subjects = all_subjects[start_idx:end_idx]
-              
-              if not target_subjects:
-                  print(f"No subjects found for range {start_idx}-{end_idx}")
-                  exit(1)
-                  
-              print(f"Downloading data for subjects: {target_subjects}")
-              
-              # 下载数据到指定目录 (MOABB 支持 path 参数)
-              ds.get_data(subjects=target_subjects, path="$DATA_DIR")
-              
-          except Exception as e:
-              print(f"Error processing {dataset_name}: {e}")
-              exit(1)
-          EOF
+          uv run python -c "from moabb.datasets import ${{ matrix.dataset }}; ds=${{ matrix.dataset }}(); ds.get_data(subjects=ds.subject_list[${{ matrix.subject.start }}:${{ matrix.subject.end }}])"
 
           # 3. 打包并分割文件
           # 使用 tar 压缩，然后通过 split 分割成 2GB 大小的块
